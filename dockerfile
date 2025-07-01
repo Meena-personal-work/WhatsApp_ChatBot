@@ -1,19 +1,42 @@
-FROM node:18-alpine
+FROM node:18-slim
 
-# Set the working directory
-ENV NODE_ENV=${NODE_ENV:-DEV}
+# Install Chromium dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
+# App working dir
 WORKDIR /app
 
-RUN mkdir -p -m 0755 /app/server
-
-# Add files
+# Copy files
 COPY ./server /app/server
 
-RUN npm config set strict-ssl false
-
-RUN cd /app/server && npm ci --without-ssl --insecure
+# Install dependencies
+WORKDIR /app/server
+RUN npm install
 
 EXPOSE 3001
 
-CMD sh -c 'cd $WORKDIR/app/server && node ./index.js'
+# Start the bot
+CMD ["node", "index.js"]
