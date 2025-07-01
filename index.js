@@ -12,7 +12,7 @@ const client = new Client({
 });
 
 // Generate QR Code for Authentication (Only needed once)
-client.on('qr', (qr) => {
+client.on('qr', (qr) => { 
     console.log('Scan this QR Code to login:');
     qrcode.toString(qr, { type: 'terminal', small: true, }, (err, url) => {
         if (err) {
