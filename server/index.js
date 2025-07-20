@@ -28,9 +28,15 @@ function createClient() {
   client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: true, // or false if you want to see the browser GUI
+      // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser', // <--- REMOVE OR COMMENT OUT THIS LINE FOR LOCAL
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--single-process'
+      ]
     }
   });
 
