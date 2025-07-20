@@ -1,42 +1,29 @@
-FROM node:18-slim
+# Stage 1: Build React Client
+FROM node:16-alpine as build-client
 
-# Install Chromium dependencies
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    ca-certificates \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    xdg-utils \
-    --no-install-recommends && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# App working dir
 WORKDIR /app
 
-# Copy files
-COPY ./server /app/server
+# Copy and build the client
+COPY client ./client
+RUN cd client && npm install && npm run build
 
-# Install dependencies
-WORKDIR /app/server
-RUN npm install
+# Stage 2: Setup Server
+FROM node:16-alpine
 
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Copy server files
+COPY server ./server
+
+# Copy React build to server/public
+COPY --from=build-client /app/client/build ./server/public
+
+# Install only production dependencies
+RUN cd server && npm install --production
+
+# Expose server port
 EXPOSE 3001
 
-# Start the bot
-CMD ["node", "index.js"]
+# Start backend (which will serve React from /public)
+CMD ["node", "server/index.js"]
