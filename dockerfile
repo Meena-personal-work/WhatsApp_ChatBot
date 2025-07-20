@@ -5,13 +5,13 @@ WORKDIR /app
 COPY client ./client
 RUN cd client && npm install && npm run build
 
-# Stage 2: Setup Server with Chromium
+# Stage 2: Server Setup (Debian-based, Chromium included)
 FROM node:16
 
 ENV NODE_ENV=production
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install Chromium dependencies
+# Install Chromium and required dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
@@ -35,11 +35,16 @@ RUN apt-get update && apt-get install -y \
     chromium \
     && rm -rf /var/lib/apt/lists/*
 
+# Setup app directory
 WORKDIR /app
 
+# Copy server files
 COPY server ./server
+
+# Copy React build to server/public
 COPY --from=build-client /app/client/build ./server/public
 
+# Install only server production dependencies
 RUN cd server && npm install --production
 
 EXPOSE 3001
