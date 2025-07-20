@@ -1,19 +1,18 @@
 # Stage 1: Build React Client
-FROM node:16-alpine as build-client
+FROM node:16 as build-client
 
 WORKDIR /app
 COPY client ./client
-
 RUN cd client && npm install && npm run build
 
-# Stage 2: Setup Server with Puppeteer Support
+# Stage 2: Setup Server with Chromium
 FROM node:16
 
-WORKDIR /app
+ENV NODE_ENV=production
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install Chromium dependencies for puppeteer/whatsapp-web.js
-RUN apt-get update && \
-    apt-get install -y \
+# Install Chromium dependencies
+RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
     fonts-liberation \
@@ -36,20 +35,13 @@ RUN apt-get update && \
     chromium \
     && rm -rf /var/lib/apt/lists/*
 
-# Set environment variable so puppeteer knows where Chrome is
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+WORKDIR /app
 
-# Copy server code
 COPY server ./server
-
-# Copy built React app into server's public folder
 COPY --from=build-client /app/client/build ./server/public
 
-# Install server dependencies
 RUN cd server && npm install --production
 
-# Expose the server port
 EXPOSE 3001
 
-# Start the app
 CMD ["node", "server/index.js"]
