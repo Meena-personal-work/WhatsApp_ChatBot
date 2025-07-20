@@ -29,7 +29,7 @@ function createClient() {
     authStrategy: new LocalAuth(),
     puppeteer: {
       headless: true,
-      executablePath: puppeteer.executablePath(),
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
   });
