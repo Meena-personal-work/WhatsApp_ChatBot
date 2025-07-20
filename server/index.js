@@ -1,81 +1,249 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const qrcode = require('qrcode');
-const fs = require('fs');
+// const express = require('express');
+// const { Client, LocalAuth } = require('whatsapp-web.js');
+// const qrcode = require('qrcode-terminal');
+// const qrcodeImage = require('qrcode');
+// const puppeteer = require('puppeteer');
+// const app = express();
+// const cors = require('cors');
 
-// Initialize the WhatsApp Client with session storage
+// const PORT = 3001;
+// app.use(express.json());
+// app.use(cors({origin: '*'}))
+// let qrCodeString = '';
+// let isClientReady = false;
+
+// const client = new Client({
+//     authStrategy: new LocalAuth(),
+//     puppeteer: {
+//         headless: true,
+//         executablePath: puppeteer.executablePath(),
+//         args: ['--no-sandbox', '--disable-setuid-sandbox']
+//     }
+// });
+
+// client.on('qr', (qr) => {
+//     qrCodeString = qr;
+//     console.log('🔄 QR RECEIVED - Please scan again');
+//     qrcode.generate(qr, { small: true }); // For terminal
+// });
+
+// client.on('ready', () => {
+//     isClientReady = true;
+//     console.log('✅ Client is ready!');
+// });
+
+// client.on('authenticated', () => {
+//     console.log('🔐 Authenticated');
+// });
+
+// client.on('auth_failure', msg => {
+//     console.error('❌ Authentication failure', msg);
+// });
+
+// client.on('disconnected', async (reason) => {
+//     console.log('🔌 Disconnected:', reason);
+//     isClientReady = false;
+
+//     try {
+//         await client.destroy();
+//         console.log('♻️ Restarting client after disconnect...');
+//         setTimeout(() => client.initialize(), 3000);
+//     } catch (err) {
+//         console.error('⚠️ Error destroying client:', err);
+//     }
+// });
+
+// client.on('message', async message => {
+//     const text = message.body.toLowerCase().trim();
+//     console.log(`📩 Message from ${message.from}: ${text}`);
+
+//     if (text === 'hi') {
+//         await message.reply(
+//             `Hi, how can I help you?\n1. Name\n2. Phone No\n3. Mail`
+//         );
+//     } else if (text === '1') {
+//         await message.reply('My name is M. Meena ka....');
+//     } else if (text === '2') {
+//         await message.reply('8999898989');
+//     } else if (text === '3' || text.includes('mail')) {
+//         await message.reply('meenakshi.732@gmail.com');
+//     } else {
+//         await message.reply("Sorry, I didn't understand. Please type 'hi' to see options.");
+//     }
+// });
+
+// client.initialize();
+
+// // =====================
+// // API Routes
+// // =====================
+
+// // Get QR as base64 image
+// app.get('/qr', async (req, res) => {
+//     if (qrCodeString) {
+//         const qrImage = await qrcodeImage.toDataURL(qrCodeString);
+//         res.send(`<img src="${qrImage}" alt="Scan QR Code to Login" />`);
+//     } else {
+//         res.send('✅ Already authenticated or QR not available.');
+//     }
+// });
+
+// // Send message
+// app.post('/send-message', async (req, res) => {
+//     const { number, message } = req.body;
+//     if (!number || !message) {
+//         return res.status(400).json({ error: 'number and message are required' });
+//     }
+
+//     try {
+//         const chatId = number.includes('@c.us') ? number : `${number}@c.us`;
+//         await client.sendMessage(chatId, message);
+//         res.json({ status: 'Message sent' });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ error: 'Failed to send message' });
+//     }
+// });
+
+// // Check client status
+// app.get('/status', (req, res) => {
+//     res.json({ ready: isClientReady });
+// });
+
+// // Start Express server
+// app.listen(PORT, () => {
+//     console.log(`🚀 Server is running at http://localhost:${PORT}`);
+// });
+
+const express = require('express');
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const qrcodeImage = require('qrcode');
+const puppeteer = require('puppeteer');
+const app = express();
+const cors = require('cors');
+
+const PORT = 3001;
+app.use(express.json());
+app.use(cors({ origin: '*' }));
+let qrCodeString = '';
+let isClientReady = false;
+let clientStatus = 'initializing';
+
 const client = new Client({
-    authStrategy: new LocalAuth(), // Stores session automatically
+    authStrategy: new LocalAuth(),
     puppeteer: {
-        headless: true, // Runs in the background
+        headless: true,
+        executablePath: puppeteer.executablePath(),
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
 
-// Generate QR Code for Authentication (Only needed once)
-client.on('qr', (qr) => { 
-    console.log('Scan this QR Code to login:');
-    qrcode.toString(qr, { type: 'terminal', small: true, }, (err, url) => {
-        if (err) {
-            console.error('Failed to generate QR code:', err);
-        } else {
-            console.log(url);
-        }
-    });
+client.on('qr', (qr) => {
+    qrCodeString = qr;
+    console.log('🔄 QR RECEIVED - Please scan again');
+    qrcode.generate(qr, { small: true }); // For terminal
 });
-// Log when the client is ready
+
 client.on('ready', () => {
-    console.log('✅ WhatsApp bot is ready!');
+    isClientReady = true;
+    console.log('✅ Client is ready!');
 });
 
-// Handle Incoming Messages
-client.on('message', async (message) => {
-    console.log(`📩 Message from ${message.from}: ${message.body}`);
+client.on('authenticated', () => {
+    console.log('🔐 Authenticated');
+});
 
-    if (message.body.toLowerCase() === 'hi') {
-        const menu = `Hello! How can I help you today? Please choose an option:\n\n` +
-            `1. Location 📍\n` +
-            `2. Crackers PDF 🎇\n` +
-            `3. Giftbox PDF 🎁`;
-        message.reply(menu);
-    } else if (message.body === '1') {
-        client.sendMessage(message.from, 'Here is our location:');
-        client.sendMessage(message.from, {
-            location: {
-                latitude: 12.971598, // Example latitude
-                longitude: 77.594566 // Example longitude
-            }
-        });
-    } else if (message.body === '2') {
-        sendPDF(message.from, './crackers.pdf');
-    } else if (message.body === '3') {
-        sendPDF(message.from, './giftbox.pdf');
-    } else {
-        message.reply("Sorry, I didn't understand that. Please reply with:\n1 for Location 📍\n2 for Crackers PDF 🎇\n3 for Giftbox PDF 🎁.");
+client.on('auth_failure', msg => {
+    console.error('❌ Authentication failure', msg);
+});
+
+client.on('disconnected', async (reason) => {
+    console.log('🔌 Disconnected:', reason);
+    isClientReady = false;
+
+    try {
+        if (typeof client.destroy === 'function') {
+            await client.destroy();
+        } else {
+            console.warn('⚠️ client.destroy is not a function');
+        }
+
+        console.log('♻️ Restarting client after disconnect...');
+        setTimeout(() => client.initialize(), 3000);
+    } catch (err) {
+        console.error('⚠️ Error destroying client:', err);
     }
 });
 
-// Function to Send a PDF
-async function sendPDF(to, filePath) {
-    if (fs.existsSync(filePath)) {
-        const media = MessageMedia.fromFilePath(filePath);
-        client.sendMessage(to, media);
+client.on('message', async message => {
+    const text = message.body.toLowerCase().trim();
+    console.log(`📩 Message from ${message.from}: ${text}`);
+
+    if (text === 'hi') {
+        await message.reply(
+            `Hi, how can I help you?\n1. Name\n2. Phone No\n3. Mail`
+        );
+    } else if (text === '1') {
+        await message.reply('My name is M. Meena ka....');
+    } else if (text === '2') {
+        await message.reply('8999898989');
+    } else if (text === '3' || text.includes('mail')) {
+        await message.reply('meenakshi.732@gmail.com');
     } else {
-        client.sendMessage(to, "❌ Sorry, the requested PDF file is not available.");
+        await message.reply("Sorry, I didn't understand. Please type 'hi' to see options.");
     }
-}
-
-// Handle Errors
-client.on('auth_failure', (msg) => {
-    console.error('❌ Authentication failed:', msg);
 });
 
-client.on('disconnected', (reason) => {
-    console.log('⚠️ WhatsApp client disconnected:', reason);
-});
-
-// Start the Client
 client.initialize();
 
+// =====================
+// API Routes
+// =====================
 
+// Get QR as base64 image
+app.get('/qr', async (req, res) => {
+    if (qrCodeString) {
+        const qrImage = await qrcodeImage.toDataURL(qrCodeString);
+        res.send(`<img src="${qrImage}" alt="Scan QR Code to Login" />`);
+    } else {
+        res.send('✅ Already authenticated or QR not available.');
+    }
 
+    if (clientStatus === 'disconnected' || clientStatus === 'restarting') {
+        return res.json({ message: 'Client is restarting, please wait...', status: clientStatus });
+    }
 
+    // Serve QR code if client not authenticated
+    client.on('qr', (qr) => {
+        const qrImage = qrTerminal.generate(qr, { small: true });
+        return res.json({ qr, status: 'scan_required' });
+    });
+});
+
+// Send message
+app.post('/send-message', async (req, res) => {
+    const { number, message } = req.body;
+    if (!number || !message) {
+        return res.status(400).json({ error: 'number and message are required' });
+    }
+
+    try {
+        const chatId = number.includes('@c.us') ? number : `${number}@c.us`;
+        await client.sendMessage(chatId, message);
+        res.json({ status: 'Message sent' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to send message' });
+    }
+});
+
+// Check client status
+app.get('/status', (req, res) => {
+    res.json({ ready: isClientReady });
+});
+
+// Start Express server
+app.listen(PORT, () => {
+    console.log(`🚀 Server is running at http://localhost:${PORT}`);
+});
