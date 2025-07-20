@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './Whatsapp.css';
 
 const WhatsappQR = () => {
   const [qrHtml, setQrHtml] = useState('');
@@ -12,10 +13,8 @@ const WhatsappQR = () => {
       setQrHtml(text);
       setShowNote(true);
 
-      // Clear any existing timer
       if (timer) clearTimeout(timer);
 
-      // Set 20-second timer to hide note
       const timeout = setTimeout(() => {
         setShowNote(false);
         setQrHtml('<p>⚠️ QR expired. Please click Reload to get a new one.</p>');
@@ -29,60 +28,28 @@ const WhatsappQR = () => {
   };
 
   useEffect(() => {
-    // Cleanup timer when component unmounts
     return () => {
       if (timer) clearTimeout(timer);
     };
   }, [timer]);
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+    <div className="container">
       <h2>WhatsApp Web QR Integration</h2>
-      <button
-        onClick={fetchQr}
-        style={{
-          padding: '10px 20px',
-          marginBottom: '10px',
-          backgroundColor: '#25D366',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
+
+      <button onClick={fetchQr} className="getQR">
         Get QR
       </button>
 
       {qrHtml && (
-        <div
-          style={{
-            marginTop: '10px',
-            padding: '10px',
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-          }}
-          dangerouslySetInnerHTML={{ __html: qrHtml }}
-        />
+        <div className="qr-box" dangerouslySetInnerHTML={{ __html: qrHtml }} />
       )}
 
       {showNote && (
-        <p style={{ marginTop: '10px', color: '#888' }}>
-          ⚠️ QR will expire in 20 seconds.
-        </p>
+        <p className="qr-note">⚠️ QR will expire in 20 seconds.</p>
       )}
 
-      <button
-        onClick={fetchQr}
-        style={{
-          marginTop: '10px',
-          padding: '8px 16px',
-          backgroundColor: '#128C7E',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-        }}
-      >
+      <button onClick={fetchQr} className="reloadQR">
         Reload QR
       </button>
     </div>
