@@ -8,7 +8,7 @@ const WhatsappQR = () => {
 
   const fetchQr = async () => {
     try {
-      const response = await fetch('https://whatsapp-chatbot-jyxbp.ondigitalocean.app/qr');
+      const response = await fetch(`${process.env.REACT_APP_SERVER_PREFIX}/qr`);
       const text = await response.text();
       setQrHtml(text);
       setShowNote(true);
