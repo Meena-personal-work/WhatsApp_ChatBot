@@ -8,7 +8,8 @@ const WhatsappQR = () => {
 
   const fetchQr = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_SERVER_PREFIX}/qr`);
+      const response = await fetch(`${process.env.REACT_APP_SERVER_PREFIX}/qr`, {'method': 'GET'});
+      
       const text = await response.text();
       setQrHtml(text);
       setShowNote(true);

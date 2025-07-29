@@ -9,11 +9,15 @@ require('dotenv').config();
 const express = require('express');
 
 const app = express();
+app.use(express.json());
+app.use(cors({ origin: '*' }));
+// Serve static React files
+app.use('/static', express.static(path.join(__dirname, '/../client/build/static')));
+
 const PORT = process.env.SERVER_PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV;
 
-app.use(express.json());
-app.use(cors({ origin: '*' }));
+
 
 let qrCodeString = '';
 let isClientReady = false;
@@ -111,11 +115,10 @@ client.initialize();
 // Routes
 // ==========================
 
-// Serve static React files
-app.use('/static', express.static(path.join(__dirname, '/../client/build/static')));
-
 // 📸 Get QR Code
 app.get('/qr', async (req, res) => {
+  console.log("Running /qr");
+  
   if (isClientReady) {
     return res.send('✅ Already authenticated');
   }
