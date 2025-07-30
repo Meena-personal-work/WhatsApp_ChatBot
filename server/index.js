@@ -307,11 +307,20 @@ app.get('/status', (req, res) => {
   res.json({ ready: isClientReady, status: clientStatus });
 });
 
-// Serve client build (SPA) in prod
+// // Serve client build (SPA) in prod
+// if (NODE_ENV === 'production' || NODE_ENV === 'DIT') {
+//   const indexPath = path.join(__dirname, '..', 'client', 'build', 'index.html');
+//   app.use(express.static(path.join(__dirname, '..', 'client', 'build')));
+//   app.get('*', (req, res) => res.sendFile(indexPath));
+// }
+
 if (NODE_ENV === 'production' || NODE_ENV === 'DIT') {
-  const indexPath = path.join(__dirname, '..', 'client', 'build', 'index.html');
-  app.use(express.static(path.join(__dirname, '..', 'client', 'build')));
-  app.get('*', (req, res) => res.sendFile(indexPath));
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(indexPath);
+  });
 }
 
 // Start server
