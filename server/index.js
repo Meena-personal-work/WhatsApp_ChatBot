@@ -1,4 +1,5 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+// index.js
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const qrcodeImage = require('qrcode');
 const puppeteer = require('puppeteer');
@@ -9,31 +10,117 @@ require('dotenv').config();
 const express = require('express');
 
 const app = express();
-app.use(express.json());
-app.use(cors({ origin: '*' }));
-// Serve static React files
-app.use('/static', express.static(path.join(__dirname, '/../client/build/static')));
-
-const PORT = process.env.SERVER_PORT || 3001;
+const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV;
 
-
+app.use(express.json());
+app.use(cors({ origin: '*' }));
 
 let qrCodeString = '';
 let isClientReady = false;
 let clientStatus = 'initializing';
-
 let client;
 
-// ==========================
-// Initialize WhatsApp Client
-// ==========================
+/* ==========================
+   Paths (point to client/public)
+   ========================== */
+const PUBLIC_DIR = path.join(__dirname, '..', 'client', 'public');
+const PDF_DIR = path.join(PUBLIC_DIR, 'pdf');
+const IMAGE_DIR = path.join(PUBLIC_DIR, 'image');
+
+console.log('📂 PUBLIC_DIR  =>', PUBLIC_DIR);
+console.log('📂 PDF_DIR     =>', PDF_DIR);
+console.log('📂 IMAGE_DIR   =>', IMAGE_DIR);
+
+/* ==========================
+   Menus & Messages
+   ========================== */
+const sessions = new Map(); // key: message.from -> { state: 'ROOT' | 'FAMILY' | 'GIFT' }
+
+const MAIN_MENU = [
+  'Hi! Welcome to Jai Ganesh Agency.',
+  'Please choose a category:',
+  '1. Family Pack',
+  '2. Gift Pack',
+  '3. Loose Crackers',
+  '',
+  "Type the number of your choice.",
+  "Type 'menu' anytime to return here."
+].join('\n');
+
+const FAMILY_MENU = [
+  '🎆 Family Pack Options:',
+  '4. Rs. 2,000/- Family Pack',
+  '5. Rs. 3,000/- Family Pack',
+  '6. Rs. 4,000/- Family Pack',
+  '7. Rs. 5,000/- Family Pack',
+  '8. Rs. 7,500/- Family Pack',
+  '9. Rs. 10,000/- Family Pack',
+  '',
+  "Type the number to view more or 'back' to go to categories."
+].join('\n');
+
+const GIFT_MENU = [
+  '🎁 Gift Pack Options:',
+  '10. Small Gift Pack',
+  '11. Medium Gift Pack',
+  '12. Large Gift Pack',
+  '',
+  "Type the number to view more or 'back' to go to categories."
+].join('\n');
+
+// Thank-you messages after successful media send
+const THANKS_PDF =
+  "🙏 Thank you for choosing Jai Ganesh Agency.\nIf you need further assistance, contact Meena — 00022255.";
+const THANKS_IMAGE =
+  "🙏 Thank you for choosing Jai Ganesh Agency.\nIf you need further assistance, contact Fisheee — 55665455.";
+
+// Loose crackers link (no submenu)
+const LOOSE_ORDER_LINK = 'https://jaiganeshagency.netlify.app/';
+const LOOSE_ORDER_MSG =
+  `🧨 Loose Crackers\nPlease go to this link to order the crackers:\n${LOOSE_ORDER_LINK}`;
+
+/* ==========================
+   Option → File mapping
+   ========================== */
+// Family: map to specific PDFs (ensure files exist in client/public/pdf)
+const familyOptions = {
+  '4': { label: 'Rs. 2,000/- Family Pack', file: path.join(PDF_DIR, 'family_2000.pdf') },
+  '5': { label: 'Rs. 3,000/- Family Pack', file: path.join(PDF_DIR, 'family_3000.pdf') },
+  '6': { label: 'Rs. 4,000/- Family Pack', file: path.join(PDF_DIR, 'family_4000.pdf') },
+  '7': { label: 'Rs. 5,000/- Family Pack', file: path.join(PDF_DIR, 'family_5000.pdf') },
+  '8': { label: 'Rs. 7,500/- Family Pack', file: path.join(PDF_DIR, 'family_7500.pdf') },
+  '9': { label: 'Rs. 10,000/- Family Pack', file: path.join(PDF_DIR, 'family_10000.pdf') }
+};
+
+// Gift: map to images (ensure files exist in client/public/image)
+const giftOptions = {
+  '10': { label: 'Small Gift Pack',  file: path.join(IMAGE_DIR, 'gift_21items.jpg') },
+  '11': { label: 'Medium Gift Pack', file: path.join(IMAGE_DIR, 'gift_medium.jpg') }, // add file when ready
+  '12': { label: 'Large Gift Pack',  file: path.join(IMAGE_DIR, 'gift_large.jpg') }   // add file when ready
+};
+
+/* Helper to send a media file if it exists */
+async function trySendMedia(chatId, absPath, caption) {
+  if (!absPath) return false;
+  if (!fs.existsSync(absPath)) {
+    console.warn('⚠️ File not found:', absPath);
+    return false;
+  }
+  const media = await MessageMedia.fromFilePath(absPath);
+  await client.sendMessage(chatId, media, caption ? { caption } : undefined);
+  return true;
+}
+
+/* ==========================
+   WhatsApp Client
+   ========================== */
 function createClient() {
   client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-      headless: true, // or false if you want to see the browser GUI
-      // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser', // <--- REMOVE OR COMMENT OUT THIS LINE FOR LOCAL
+      headless: true,
+      // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -48,7 +135,7 @@ function createClient() {
     qrCodeString = qr;
     clientStatus = 'qr';
     console.log('📱 QR received - waiting for scan...');
-    qrcode.generate(qr, { small: true }); // For terminal
+    qrcode.generate(qr, { small: true });
   });
 
   client.on('ready', () => {
@@ -58,94 +145,143 @@ function createClient() {
     console.log('✅ WhatsApp client is ready!');
   });
 
-  client.on('authenticated', () => {
-    console.log('🔐 Client authenticated');
-  });
+  client.on('authenticated', () => console.log('🔐 Client authenticated'));
+  client.on('auth_failure', (msg) => { console.error('❌ Auth failure:', msg); clientStatus = 'auth_failed'; });
 
-  client.on('auth_failure', msg => {
-    console.error('❌ Auth failure:', msg);
-    clientStatus = 'auth_failed';
-  });
-
-  client.on('disconnected', async reason => {
+  client.on('disconnected', async (reason) => {
     console.warn('🔌 Client disconnected:', reason);
     isClientReady = false;
     clientStatus = 'disconnected';
-
     try {
       if (typeof client.destroy === 'function') {
         await client.destroy();
         console.log('🧹 Client destroyed');
       }
-
-      // Re-initialize after delay
       setTimeout(() => {
         console.log('♻️ Restarting client...');
         createClient();
         client.initialize();
         clientStatus = 'restarting';
       }, 3000);
-
     } catch (err) {
       console.error('⚠️ Error during disconnect:', err.message);
     }
   });
 
+  // ===== Message handler (global shortcuts + media send + custom thank-you + loose link only)
   client.on('message', async (message) => {
-    const text = message.body.toLowerCase().trim();
-    console.log(`📩 ${message.from}: ${text}`);
+    const chatId = message.from;
+    const textRaw = (message.body || '').trim();
+    const text = textRaw.toLowerCase();
+    console.log(`📩 ${chatId}: ${textRaw}`);
 
-    const responses = {
-      hi: `Hi! How can I help you?\n1. Name\n2. Phone\n3. Email`,
-      '1': 'My name is M. Meena ka...',
-      '2': '8999898989',
-      '3': 'meenakshi.732@gmail.com'
-    };
+    if (!sessions.has(chatId)) sessions.set(chatId, { state: 'ROOT' });
+    const session = sessions.get(chatId);
 
-    const reply = responses[text] || "Sorry, I didn't understand. Please type 'hi' to see options.";
-    await message.reply(reply);
+    // Global menu commands
+    if (['hi', 'hello', 'menu', 'start'].includes(text)) {
+      sessions.set(chatId, { state: 'ROOT' });
+      await message.reply(MAIN_MENU);
+      return;
+    }
+
+    // Global category shortcuts
+    if (text === '1' || text === 'family') {
+      sessions.set(chatId, { state: 'FAMILY' });
+      await message.reply(FAMILY_MENU);
+      return;
+    }
+    if (text === '2' || text === 'gift') {
+      sessions.set(chatId, { state: 'GIFT' });
+      await message.reply(GIFT_MENU);
+      return;
+    }
+    if (text === '3' || text === 'loose' || text === 'loose crackers') {
+      // Send only the link and keep user at ROOT for easy navigation after
+      sessions.set(chatId, { state: 'ROOT' });
+      await message.reply(LOOSE_ORDER_MSG);
+      return;
+    }
+
+    // Back to categories
+    if (text === 'back') {
+      sessions.set(chatId, { state: 'ROOT' });
+      await message.reply(MAIN_MENU);
+      return;
+    }
+
+    // State machine
+    switch (session.state) {
+      case 'ROOT': {
+        await message.reply(`Sorry, I didn't understand.\n\n${MAIN_MENU}`);
+        break;
+      }
+      case 'FAMILY': {
+        const option = familyOptions[text];
+        if (option) {
+          await message.reply(`You chose: ${option.label}`);
+          const sent = await trySendMedia(chatId, option.file, `📄 ${option.label}`);
+          if (!sent) {
+            await message.reply('🔍 PDF not found for this option.');
+          } else {
+            await message.reply(THANKS_PDF);
+          }
+        } else {
+          await message.reply(`Please choose a valid option.\n\n${FAMILY_MENU}`);
+        }
+        break;
+      }
+      case 'GIFT': {
+        const option = giftOptions[text];
+        if (option) {
+          await message.reply(`You chose: ${option.label}`);
+          const sent = await trySendMedia(chatId, option.file, `🖼️ ${option.label}`);
+          if (!sent) {
+            await message.reply('📎 File/image not available for this gift pack.');
+          } else {
+            await message.reply(THANKS_IMAGE);
+          }
+        } else {
+          await message.reply(`Please choose a valid option.\n\n${GIFT_MENU}`);
+        }
+        break;
+      }
+      default: {
+        sessions.set(chatId, { state: 'ROOT' });
+        await message.reply(MAIN_MENU);
+      }
+    }
   });
 }
 
-// Initial client creation
+// Start WhatsApp client
 createClient();
 client.initialize();
 
-// ==========================
-// Routes
-// ==========================
+/* ==========================
+   Express routes (optional)
+   ========================== */
 
-// 📸 Get QR Code
+// Serve built React static files if you deploy the client
+app.use('/static', express.static(path.join(__dirname, '..', 'client', 'build', 'static')));
+
+// QR page
 app.get('/qr', async (req, res) => {
-  console.log("Running /qr");
-  
-  if (isClientReady) {
-    return res.send('✅ Already authenticated');
-  }
-
-  if (!qrCodeString) {
-    return res.send('⚠️ QR not yet generated. Please wait...');
-  }
-
+  if (isClientReady) return res.send('✅ Already authenticated');
+  if (!qrCodeString) return res.send('⚠️ QR not yet generated. Please wait...');
   try {
     const image = await qrcodeImage.toDataURL(qrCodeString);
     res.send(`<img src="${image}" alt="Scan QR Code" />`);
-  } catch (err) {
+  } catch {
     res.status(500).send('❌ Failed to generate QR image');
   }
 });
 
-// 💬 Send Message
+// Send message API
 app.post('/send-message', async (req, res) => {
-  const { number, message } = req.body;
-
-  if (!isClientReady) {
-    return res.status(503).json({ error: 'Client not ready' });
-  }
-
-  if (!number || !message) {
-    return res.status(400).json({ error: 'number and message are required' });
-  }
+  const { number, message } = req.body || {};
+  if (!isClientReady) return res.status(503).json({ error: 'Client not ready' });
+  if (!number || !message) return res.status(400).json({ error: 'number and message are required' });
 
   try {
     const chatId = number.includes('@c.us') ? number : `${number}@c.us`;
@@ -157,23 +293,19 @@ app.post('/send-message', async (req, res) => {
   }
 });
 
-// 📶 Status Check
+// Status
 app.get('/status', (req, res) => {
   res.json({ ready: isClientReady, status: clientStatus });
 });
 
-// 🔄 Serve index.html (for React SPA)
+// Serve client build (SPA) in prod
 if (NODE_ENV === 'production' || NODE_ENV === 'DIT') {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  app.use(express.static(path.join(__dirname, 'public')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(indexPath);
-  });
+  const indexPath = path.join(__dirname, '..', 'client', 'build', 'index.html');
+  app.use(express.static(path.join(__dirname, '..', 'client', 'build')));
+  app.get('*', (req, res) => res.sendFile(indexPath));
 }
 
-
-// 🚀 Start server
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
