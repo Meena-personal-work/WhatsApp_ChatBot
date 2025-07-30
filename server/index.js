@@ -60,11 +60,16 @@ const FAMILY_MENU = [
   "Type the number to view more or 'back' to go to categories."
 ].join('\n');
 
+/* ✅ UPDATED: Gift menu reflects your images (options 10–16) */
 const GIFT_MENU = [
   '🎁 Gift Pack Options:',
-  '10. Small Gift Pack',
-  '11. Medium Gift Pack',
-  '12. Large Gift Pack',
+  '10. Gift Pack - 21 items',
+  '11. Gift Pack - 25 items',
+  '12. Gift Pack - 30 items',
+  '13. Gift Pack - 35 items',
+  '14. Gift Pack - 40 items',
+  '15. Gift Pack - 50 items',
+  '16. Gift Pack - 60 items',
   '',
   "Type the number to view more or 'back' to go to categories."
 ].join('\n');
@@ -93,11 +98,15 @@ const familyOptions = {
   '9': { label: 'Rs. 10,000/- Family Pack', file: path.join(PDF_DIR, 'family_10000.pdf') }
 };
 
-// Gift: map to images (ensure files exist in client/public/image)
+/* ✅ UPDATED: Gift options 10–16 mapped to your image files */
 const giftOptions = {
-  '10': { label: 'Small Gift Pack',  file: path.join(IMAGE_DIR, 'gift_21items.jpg') },
-  '11': { label: 'Medium Gift Pack', file: path.join(IMAGE_DIR, 'gift_medium.jpg') }, // add file when ready
-  '12': { label: 'Large Gift Pack',  file: path.join(IMAGE_DIR, 'gift_large.jpg') }   // add file when ready
+  '10': { label: 'Gift Pack - 21 items', file: path.join(IMAGE_DIR, 'gift_21items.jpg') },
+  '11': { label: 'Gift Pack - 25 items', file: path.join(IMAGE_DIR, 'gift_25items.jpg') },
+  '12': { label: 'Gift Pack - 30 items', file: path.join(IMAGE_DIR, 'gift_30items.jpg') },
+  '13': { label: 'Gift Pack - 35 items', file: path.join(IMAGE_DIR, 'gift_35items.jpg') },
+  '14': { label: 'Gift Pack - 40 items', file: path.join(IMAGE_DIR, 'gift_40items.jpg') },
+  '15': { label: 'Gift Pack - 50 items', file: path.join(IMAGE_DIR, 'gift_50items.jpg') },
+  '16': { label: 'Gift Pack - 60 items', file: path.join(IMAGE_DIR, 'gift_60items.jpg') }
 };
 
 /* Helper to send a media file if it exists */
