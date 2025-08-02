@@ -526,6 +526,9 @@
 // ==========================
 // Imports and Setup
 // ==========================
+// ==========================
+// Imports and Setup
+// ==========================
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const qrcodeImage = require('qrcode');
@@ -545,22 +548,22 @@ app.use(cors({ origin: '*' }));
 
 // =======================================================================
 // NEW: Pre-load the PDF file into memory for faster access
-// This prevents reading from the disk on every single request.
 // =======================================================================
 let detailsPDFMedia;
-const pdfPath = path.join(__dirname, '..', 'client', 'public', 'pdf', 'family_2000.pdf');
+// Corrected path to look inside the 'server/public' folder
+const pdfPath = path.join(__dirname, 'public', 'pdf', 'family_2000.pdf');
 
 try {
-  if (fs.existsSync(pdfPath)) {
-    console.log('📄 Pre-loading PDF file into memory...');
-    const fileData = fs.readFileSync(pdfPath);
-    // Corrected the filename from 'family_2000.pdf.pdf' to 'family_2000.pdf'
-    detailsPDFMedia = new MessageMedia('application/pdf', fileData.toString('base64'), 'family_2000.pdf');
-  } else {
-    console.error('⚠️ PDF file not found at:', pdfPath);
-  }
+  if (fs.existsSync(pdfPath)) {
+    console.log('📄 Pre-loading PDF file into memory...');
+    const fileData = fs.readFileSync(pdfPath);
+    detailsPDFMedia = new MessageMedia('application/pdf', fileData.toString('base64'), 'family_2000.pdf');
+  } else {
+    console.error('⚠️ PDF file not found at:', pdfPath);
+    console.error('⚠️ The path checked was:', path.resolve(pdfPath));
+  }
 } catch (err) {
-  console.error('❌ Error pre-loading PDF file:', err);
+  console.error('❌ Error pre-loading PDF file:', err);
 }
 
 // ==========================
@@ -575,104 +578,104 @@ let client;
 // WhatsApp Client Initialization
 // ==========================
 function createClient() {
-  console.log('Attempting to create and initialize WhatsApp client...');
+  console.log('Attempting to create and initialize WhatsApp client...');
 
-  client = new Client({
-    authStrategy: new LocalAuth({ clientId: 'session-1' }),
+  client = new Client({
+    authStrategy: new LocalAuth({ clientId: 'session-1' }),
 
-    puppeteer: {
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-        '--single-process'
-      ]
-    }
-  });
+    puppeteer: {
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--single-process'
+      ]
+    }
+  });
 
-  // --- Client Event Handlers ---
-  client.on('qr', (qr) => {
-    qrCodeString = qr;
-    clientStatus = 'qr';
-    console.log('📱 QR received - waiting for scan...');
-    qrcode.generate(qr, { small: true });
-  });
+  // --- Client Event Handlers ---
+  client.on('qr', (qr) => {
+    qrCodeString = qr;
+    clientStatus = 'qr';
+    console.log('📱 QR received - waiting for scan...');
+    qrcode.generate(qr, { small: true });
+  });
 
-  client.on('ready', () => {
-    isClientReady = true;
-    clientStatus = 'ready';
-    qrCodeString = '';
-    console.log('✅ WhatsApp client is ready!');
-  });
+  client.on('ready', () => {
+    isClientReady = true;
+    clientStatus = 'ready';
+    qrCodeString = '';
+    console.log('✅ WhatsApp client is ready!');
+  });
 
-  client.on('authenticated', () => {
-    console.log('🔐 Client authenticated');
-  });
+  client.on('authenticated', () => {
+    console.log('🔐 Client authenticated');
+  });
 
-  client.on('auth_failure', msg => {
-    console.error('❌ Auth failure:', msg);
-    clientStatus = 'auth_failed';
-    client.destroy();
-  });
+  client.on('auth_failure', msg => {
+    console.error('❌ Auth failure:', msg);
+    clientStatus = 'auth_failed';
+    client.destroy();
+  });
 
-  client.on('disconnected', async reason => {
-    console.warn('🔌 Client disconnected:', reason);
-    isClientReady = false;
-    clientStatus = 'disconnected';
+  client.on('disconnected', async reason => {
+    console.warn('🔌 Client disconnected:', reason);
+    isClientReady = false;
+    clientStatus = 'disconnected';
 
-    try {
-      if (client) {
-        await client.destroy();
-        console.log('🧹 Client destroyed successfully.');
-      }
-    } catch (err) {
-      console.error('⚠️ Error during client destroy:', err.message);
-    }
+    try {
+      if (client) {
+        await client.destroy();
+        console.log('🧹 Client destroyed successfully.');
+      }
+    } catch (err) {
+      console.error('⚠️ Error during client destroy:', err.message);
+    }
 
-    setTimeout(() => {
-      console.log('♻️ Restarting client in 5 seconds...');
-      createClient();
-    }, 5000);
-  });
+    setTimeout(() => {
+      console.log('♻️ Restarting client in 5 seconds...');
+      createClient();
+    }, 5000);
+  });
 
-  client.on('message', async (message) => {
-    console.log(`🔔 Message received: ${message.body} from ${message.from}`);
+  client.on('message', async (message) => {
+    console.log(`🔔 Message received: ${message.body} from ${message.from}`);
 
-    const text = message.body.toLowerCase().trim();
+    const text = message.body.toLowerCase().trim();
 
-    if (text === '1') {
-      if (detailsPDFMedia) {
-        await message.reply(detailsPDFMedia, null, { caption: 'Here are the details you requested.' });
-        console.log('✅ Pre-loaded PDF file sent successfully.');
-      } else {
-        await message.reply("Sorry, the PDF file is not available.");
-      }
-    } else {
-      const responses = {
-        hi: `Hi! How can I help you?\n1. Get details (PDF)\n2. Phone\n3. Email`,
-        '2': '8999898989',
-        '3': 'meenakshi.732@gmail.com'
-      };
-      
-      const reply = responses[text] || "Sorry, I didn't understand. Please type 'hi' to see options.";
-      await message.reply(reply);
-    }
-  });
+    if (text === '1') {
+      if (detailsPDFMedia) {
+        await message.reply(detailsPDFMedia, null, { caption: 'Here are the details you requested.' });
+        console.log('✅ Pre-loaded PDF file sent successfully.');
+      } else {
+        await message.reply("Sorry, the PDF file is not available.");
+      }
+    } else {
+      const responses = {
+        hi: `Hi! How can I help you?\n1. Get details (PDF)\n2. Phone\n3. Email`,
+        '2': '8999898989',
+        '3': 'meenakshi.732@gmail.com'
+      };
+      
+      const reply = responses[text] || "Sorry, I didn't understand. Please type 'hi' to see options.";
+      await message.reply(reply);
+    }
+  });
 
-  client.on('change_state', state => {
-    console.log('➡️ Client state changed:', state);
-  });
+  client.on('change_state', state => {
+    console.log('➡️ Client state changed:', state);
+  });
 
-  client.initialize().catch(err => {
-    console.error("❌ Error initializing client:", err.message);
-    if (err.message.includes('ENOENT')) {
-      console.error("\nTROUBLESHOOTING: The browser executable was not found. This is common in deployment.");
-      console.error("Please ensure you have set the PUPPETEER_EXECUTABLE_PATH environment variable.");
-    }
-  });
+  client.initialize().catch(err => {
+    console.error("❌ Error initializing client:", err.message);
+    if (err.message.includes('ENOENT')) {
+      console.error("\nTROUBLESHOOTING: The browser executable was not found. This is common in deployment.");
+      console.error("Please ensure you have set the PUPPETEER_EXECUTABLE_PATH environment variable.");
+    }
+  });
 }
 
 createClient();
@@ -684,54 +687,54 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/static', express.static(path.join(__dirname, '/../client/build/static')));
 
 app.get('/qr', async (req, res) => {
-  if (isClientReady) {
-    return res.status(200).send('✅ Already authenticated');
-  }
+  if (isClientReady) {
+    return res.status(200).send('✅ Already authenticated');
+  }
 
-  if (!qrCodeString) {
-    return res.status(200).send('⚠️ QR not yet generated. Please wait...');
-  }
+  if (!qrCodeString) {
+    return res.status(200).send('⚠️ QR not yet generated. Please wait...');
+  }
 
-  try {
-    const image = await qrcodeImage.toDataURL(qrCodeString);
-    res.send(`<img src="${image}" alt="Scan QR Code" />`);
-  } catch (err) {
-    console.error('QR Image Error:', err);
-    res.status(500).send('❌ Failed to generate QR image');
-  }
+  try {
+    const image = await qrcodeImage.toDataURL(qrCodeString);
+    res.send(`<img src="${image}" alt="Scan QR Code" />`);
+  } catch (err) {
+    console.error('QR Image Error:', err);
+    res.status(500).send('❌ Failed to generate QR image');
+  }
 });
 
 app.post('/send-message', async (req, res) => {
-  const { number, message } = req.body;
+  const { number, message } = req.body;
 
-  if (!isClientReady) {
-    return res.status(503).json({ error: 'Client not ready' });
-  }
+  if (!isClientReady) {
+    return res.status(503).json({ error: 'Client not ready' });
+  }
 
-  if (!number || !message) {
-    return res.status(400).json({ error: 'number and message are required' });
-  }
+  if (!number || !message) {
+    return res.status(400).json({ error: 'number and message are required' });
+  }
 
-  try {
-    const sanitizedNumber = number.includes('@c.us') ? number : `${number}@c.us`;
-    await client.sendMessage(sanitizedNumber, message);
-    res.status(200).json({ status: '✅ Message sent' });
-  } catch (err) {
-    console.error('Send Error:', err);
-    res.status(500).json({ error: `❌ Failed to send message: ${err.message}` });
-  }
+  try {
+    const sanitizedNumber = number.includes('@c.us') ? number : `${number}@c.us`;
+    await client.sendMessage(sanitizedNumber, message);
+    res.status(200).json({ status: '✅ Message sent' });
+  } catch (err) {
+    console.error('Send Error:', err);
+    res.status(500).json({ error: `❌ Failed to send message: ${err.message}` });
+  }
 });
 
 app.get('/status', (req, res) => {
-  res.status(200).json({ ready: isClientReady, status: clientStatus });
+  res.status(200).json({ ready: isClientReady, status: clientStatus });
 });
 
 if (NODE_ENV === 'production' || NODE_ENV === 'DIT') {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
 }
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
