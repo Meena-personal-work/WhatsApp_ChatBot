@@ -16,7 +16,7 @@
     "express-ws": "^5.0.2",
     "fs": "^0.0.1-security",
     "nodemon": "^3.1.10",
-    "puppeteer": "^24.14.0",
+    "puppeteer": "^24.15.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.31.0"
